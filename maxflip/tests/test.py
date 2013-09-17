@@ -1,5 +1,5 @@
 import unittest
-
+from maxflip import Crawler
 class TruthTest(unittest.TestCase):
 
     def testFailUnless(self):

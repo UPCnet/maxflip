@@ -24,7 +24,7 @@ A tool to make migrations or massive modifications to a max database""",
       include_package_data=True,
       zip_safe=True,
       tests_require=requires + test_requires,
-      test_suite="maxflip.tests"
+      test_suite="maxflip.tests",
       install_requires=requires,
       entry_points="""
       # -*- Entry points: -*-
