@@ -4,10 +4,11 @@ import sys, os
 version = '0.0'
 
 requires = [
-    'pymongo'
+    'pymongo',
+    'mock'
 ]
 
-test_requires = []
+test_requires = ['mock']
 
 setup(name='maxflip',
       version=version,

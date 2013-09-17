@@ -121,7 +121,7 @@ class ResultSet(object):
         self.parentItem = item
 
     def setItems(self, items):
-        self.items = [MaxCrawlerItem(item, self) for item in items]
+        self.items = [Item(item, self) for item in items]
 
     def getItems(self):
         return [item.item for item in self.items]
@@ -141,11 +141,7 @@ class ResultSet(object):
     def save(self):
         if not self.crawler.dry_run:
             for item in self.items:
-                try:
-                    self.database[self.collection].save(item.item)
-                except:
-                    import ipdb;ipdb.set_trace()
-
+                self.database[self.collection].save(item.item)
             print 'Changes saved'
         else:
             print 'DRY RUN: Not saving any changes'
@@ -160,7 +156,7 @@ class ResultSet(object):
             self.save()
 
     def add_subtask(self, key):
-        results_set = MaxCrawlerResultSet()
+        results_set = ResultSet()
         self.tasks.append(('subtask', (results_set, key), {}))
         return results_set
 
@@ -187,7 +183,7 @@ class Crawler(object):
 
         #Otherwise make a single connection
         else:
-            self.uri = '{}:{}'.format(host, port)
+            self.uri = '{}:{}'.format(hosts, port)
             print 'Connecting to database @ {} ...'.format(self.uri)
             self.connection = pymongo.Connection(self.uri)
 
@@ -197,7 +193,7 @@ class Crawler(object):
         """
         """
         results = self.db[collection].find(query)
-        results_set = MaxCrawlerResultSet(database=self.db, collection=collection, crawler=self)
+        results_set = ResultSet(database=self.db, collection=collection, crawler=self)
         results_set.setItems(results)
         print 'Added {} items from {}/{}'.format(len(results_set.items), self.db.name, collection)
         return results_set
