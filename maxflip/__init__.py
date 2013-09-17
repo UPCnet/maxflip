@@ -66,8 +66,8 @@ class Item(object):
         else:
             leaf.setdefault(key, val)
 
-    def clean(self, target, keys_to_keep):
-        dic = self.getKeyValue(target)
+    def clean(self, keys_to_keep, onkey=None):
+        dic = self.item if onkey is None else self.getKeyValue(onkey)
         for key in dic.keys():
             if key not in keys_to_keep:
                 safe_del_key(dic, key)
