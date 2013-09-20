@@ -109,7 +109,7 @@ class Item(dict):
         task_method(*args, **kwargs)
 
 
-class ResultSet(object):
+class ResultSet(list):
     """
     """
 
@@ -127,10 +127,10 @@ class ResultSet(object):
         self.parentItem = item
 
     def setItems(self, items):
-        self.items = [Item(item, self) for item in items]
+        self.extend([Item(item, self) for item in items])
 
     def getItems(self):
-        return [item for item in self.items]
+        return [item for item in self]
 
     def getVariable(self, method, key):
         return self.variables.get('{}::{}'.format(method, key), None)
@@ -146,14 +146,14 @@ class ResultSet(object):
 
     def save(self):
         if not self.crawler.dry_run:
-            for item in self.items:
+            for item in self:
                 self.database[self.collection].save(item)
             print 'Changes saved'
         else:
             print 'DRY RUN: Not saving any changes'
 
     def run(self):
-        for item in self.items:
+        for item in self:
             item.variables.clear()
             for task in self.tasks:
                 item.run_task(task)
@@ -201,5 +201,5 @@ class Crawler(object):
         results = self.db[collection].find(query)
         results_set = ResultSet(database=self.db, collection=collection, crawler=self)
         results_set.setItems(results)
-        print 'Added {} items from {}/{}'.format(len(results_set.items), self.db.name, collection)
+        print 'Added {} items from {}/{}'.format(len(results_set), self.db.name, collection)
         return results_set
