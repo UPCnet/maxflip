@@ -9,12 +9,12 @@ def safe_del_key(dic, key):
         del dic[key]
 
 
-class Item(object):
+class Item(dict):
     """
     """
 
     def __init__(self, item, result_set):
-        self.item = item
+        self.update(item)
         self.result_set = result_set
         self.variables = {}
 
@@ -34,12 +34,18 @@ class Item(object):
 
     def getLeaf(self, key):
         parts = key.split('.')
-        item = self.item
+        item = None
         for part in parts[:-1]:
-            if part not in item.keys():
-                return (None, None)
-            item = item[part]
-        return (item, parts[-1])
+            if item is None:
+                if part not in self.keys():
+                    return (None, None)
+                item = self[part]
+            else:
+                if part not in item.keys():
+                    return (None, None)
+                item = item[part]
+
+        return (self if item is None else item, parts[-1])
 
     def rename(self, old, new):
         leaf, key = self.getLeaf(old)
@@ -67,7 +73,7 @@ class Item(object):
             leaf.setdefault(key, val)
 
     def clean(self, keys_to_keep, onkey=None):
-        dic = self.item if onkey is None else self.getKeyValue(onkey)
+        dic = self if onkey is None else self.getKeyValue(onkey)
         for key in dic.keys():
             if key not in keys_to_keep:
                 safe_del_key(dic, key)
@@ -124,7 +130,7 @@ class ResultSet(object):
         self.items = [Item(item, self) for item in items]
 
     def getItems(self):
-        return [item.item for item in self.items]
+        return [item for item in self.items]
 
     def getVariable(self, method, key):
         return self.variables.get('{}::{}'.format(method, key), None)
@@ -141,7 +147,7 @@ class ResultSet(object):
     def save(self):
         if not self.crawler.dry_run:
             for item in self.items:
-                self.database[self.collection].save(item.item)
+                self.database[self.collection].save(item)
             print 'Changes saved'
         else:
             print 'DRY RUN: Not saving any changes'
