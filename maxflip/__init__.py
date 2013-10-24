@@ -105,9 +105,10 @@ class Item(dict):
         if items:
             results.setItems(items)
             results.setParentItem(self)
-            results.run()
+            task_results = results.run()
             self.variables.update(results.variables)
             self.setKeyValue(key, results.getItems())
+            return task_results
 
     def max(self, key):
         value = self.getKeyValue(key)
@@ -170,23 +171,32 @@ class ResultSet(list):
 
     def run(self):
         task_results = {}
-        for item in self:
+        for itemnum, item in enumerate(self):
             item.variables.clear()
-            for task in self.tasks:
-                success = item.run_task(task)
+            for tasknum, task in enumerate(self.tasks):
+                task_result = item.run_task(task)
+                success = task_result not in [None, False, {}, []]
                 self.variables.update(item.variables)
-                if task[0] not in 'subtask':
-                    task_results.setdefault(task[0], {True: 0, False: 0, 'task': task})
-                    task_results[task[0]][success] += 1
+                task_target = task[1][1] if task[0] == 'subtask' else task[1][0]
+                task_id = '{}_{}_{}'.format(tasknum, task[0], task_target)
 
-        for task, results in task_results.items():
-            print 'Results of task {}(\'{}\'): Found: {}, Not found: {}'.format(task, "', '".join(results['task'][1]), results[True], results[False])
+                task_results.setdefault(task_id, {
+                    True: 0,
+                    False: 0,
+                    'name': task[0],
+                    'arguments': [task_target] if task[0] == 'subtask' else task[1]
+                })
+                task_results[task_id][success] += 1
 
         # Save only if the ResultSet is a root ResultSet
         # All the others result sets will end here after recursion
 
         if self.crawler:
+            for taskid, taskdata in task_results.items():
+                print 'Results of task {} "{}": Found: {}, Not found: {}'.format(taskdata['name'], taskdata['arguments'][0], taskdata[True], taskdata[False])
             self.save()
+        else:
+            return task_results
 
     def add_subtask(self, key):
         results_set = ResultSet()
@@ -228,5 +238,5 @@ class Crawler(object):
         results = self.db[collection].find(query)
         results_set = ResultSet(database=self.db, collection=collection, crawler=self)
         results_set.setItems(results)
-        print 'Added {} items from {}/{}'.format(len(results_set), self.db.name, collection)
+        print '\nAdded {} items from {}/{}'.format(len(results_set), self.db.name, collection)
         return results_set
