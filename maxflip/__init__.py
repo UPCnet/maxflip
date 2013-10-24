@@ -53,6 +53,8 @@ class Item(dict):
         if key in leaf:
             leaf[new] = leaf[key]
             del leaf[key]
+            return True
+        return False
 
     def set(self, key, *args, **kwargs):
         overwrite = kwargs.get('overwrite', True)
@@ -72,6 +74,7 @@ class Item(dict):
             leaf[key] = val
         else:
             leaf.setdefault(key, val)
+        return True
 
     def replace(self, key, source, replacement):
         value = self.getKeyValue(key)
@@ -79,13 +82,15 @@ class Item(dict):
         replacement_regex = r'{}'.format(replacement)
         if re.match(source_regex, value):
             newvalue = re.sub(source_regex, replacement_regex, value)
-            self.set(key, newvalue)
+            return self.set(key, newvalue)
+        return False
 
     def clean(self, keys_to_keep, onkey=None):
         dic = self if onkey is None else self.getKeyValue(onkey)
         for key in dic.keys():
             if key not in keys_to_keep:
                 safe_del_key(dic, key)
+        return True
 
     def delete(self, keys):
         if not isinstance(keys, list):
@@ -93,6 +98,7 @@ class Item(dict):
         for key in keys:
             leaf, key = self.getLeaf(key)
             safe_del_key(leaf, key)
+        return True
 
     def subtask(self, results, key):
         items = self.getKeyValue(key)
@@ -115,7 +121,7 @@ class Item(dict):
     def run_task(self, task):
         taskname, args, kwargs = task
         task_method = getattr(self, taskname)
-        task_method(*args, **kwargs)
+        return task_method(*args, **kwargs)
 
 
 class ResultSet(list):
@@ -163,11 +169,18 @@ class ResultSet(list):
             print 'DRY RUN: Not saving any changes'
 
     def run(self):
+        task_results = {}
         for item in self:
             item.variables.clear()
             for task in self.tasks:
-                item.run_task(task)
+                success = item.run_task(task)
                 self.variables.update(item.variables)
+                if task[0] not in 'subtask':
+                    task_results.setdefault(task[0], {True: 0, False: 0, 'task': task})
+                    task_results[task[0]][success] += 1
+
+        for task, results in task_results.items():
+            print 'Results of task {}(\'{}\'): Found: {}, Not found: {}'.format(task, "', '".join(results['task'][1]), results[True], results[False])
 
         # Save only if the ResultSet is a root ResultSet
         # All the others result sets will end here after recursion
