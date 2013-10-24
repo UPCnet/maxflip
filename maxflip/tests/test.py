@@ -205,6 +205,57 @@ class MaxFlipTests(unittest.TestCase):
         results.run()
         self.assertEqual(results[0]['person']['name'], results[0]['person']['nickname'])
 
+    def test_replace_on_value_simple(self):
+        from mock_collections import collection_subkey as collection
+        crawler = Crawler('test_db')
+        crawler.db['test_collection'] = collection
+        results = crawler.collect('test_collection', {})
+
+        results.add_task('replace', 'person.homepage', 'https', 'http')
+
+        results.run()
+        self.assertTrue(not results[0]['person']['homepage'].startswith('https'))
+        self.assertTrue(not results[1]['person']['homepage'].startswith('https'))
+        self.assertTrue(not results[2]['person']['homepage'].startswith('https'))
+
+    def test_replace_on_value_regex(self):
+        from mock_collections import collection_subkey as collection
+        crawler = Crawler('test_db')
+        crawler.db['test_collection'] = collection
+        results = crawler.collect('test_collection', {})
+
+        results.add_task('replace', 'person.homepage', 'http[^s]', 'https')
+
+        results.run()
+        self.assertTrue(results[0]['person']['homepage'].startswith('https'))
+        self.assertTrue(results[1]['person']['homepage'].startswith('https'))
+        self.assertTrue(results[2]['person']['homepage'].startswith('https'))
+
+    def test_replace_on_value_regex_with_capture(self):
+        from mock_collections import collection_subkey as collection
+        crawler = Crawler('test_db')
+        crawler.db['test_collection'] = collection
+        results = crawler.collect('test_collection', {})
+
+        results.add_task('replace', 'person.homepage', 'https://(\w+)\.\w+(\d)', 'https://\\1\\2')
+
+        results.run()
+        self.assertEqual(results[0]['person']['homepage'], collection[0]['person']['homepage'])
+        self.assertEqual(results[2]['person']['homepage'], collection[2]['person']['homepage'])
+        self.assertEqual(results[1]['person']['homepage'], 'https://foo2')
+
+    def test_not_stacking_results(self):
+        from mock_collections import collection_bug as collection
+        crawler = Crawler('test_db', dry_run=True)
+        crawler.db['test_collection'] = collection
+        results = crawler.collect('test_collection', {})
+        skills = results.add_subtask('contexts')
+        skills.add_task('set', 'name', 'renamed')
+        results.run()
+        self.assertEqual(len(results[0]['contexts']), len(collection[0]['contexts']))
+        self.assertEqual(len(results[1]['contexts']), len(collection[1]['contexts']))
+        self.assertEqual(len(results[2]['contexts']), len(collection[2]['contexts']))
+
     # TEST SUBTASKS - Only testing one action here, previous action tests
     # are valid inside a subtask. if this fails, all actions in a subtask also will.
 
@@ -218,7 +269,6 @@ class MaxFlipTests(unittest.TestCase):
         results.run()
         self.assertIn('skill_name', results[0]['person']['skills'][0].keys())
         self.assertNotIn('name', results[0]['person']['skills'][0].keys())
-
 
 if __name__ == '__main__':
     unittest.main()

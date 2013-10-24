@@ -2,6 +2,7 @@
 from inspect import isfunction
 import pymongo
 import sys
+import re
 
 
 def safe_del_key(dic, key):
@@ -72,6 +73,14 @@ class Item(dict):
         else:
             leaf.setdefault(key, val)
 
+    def replace(self, key, source, replacement):
+        value = self.getKeyValue(key)
+        source_regex = r'{}'.format(source)
+        replacement_regex = r'{}'.format(replacement)
+        if re.match(source_regex, value):
+            newvalue = re.sub(source_regex, replacement_regex, value)
+            self.set(key, newvalue)
+
     def clean(self, keys_to_keep, onkey=None):
         dic = self if onkey is None else self.getKeyValue(onkey)
         for key in dic.keys():
@@ -127,6 +136,7 @@ class ResultSet(list):
         self.parentItem = item
 
     def setItems(self, items):
+        del self[:]
         self.extend([Item(item, self) for item in items])
 
     def getItems(self):
@@ -158,6 +168,10 @@ class ResultSet(list):
             for task in self.tasks:
                 item.run_task(task)
                 self.variables.update(item.variables)
+
+        # Save only if the ResultSet is a root ResultSet
+        # All the others result sets will end here after recursion
+
         if self.crawler:
             self.save()
 
